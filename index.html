@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trinitarios Vóley Inferiores 2026 – Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="color:var(--muted)">Cargando datos...</p>
+</div>
+
+<div id="error-box">
+  <p style="font-size:1.1rem;margin-bottom:8px">No se pudieron cargar los datos</p>
+  <p id="error-msg" style="font-size:0.84rem;color:var(--muted);margin-bottom:14px"></p>
+  <button class="btn" onclick="loadData()">↻ Reintentar</button>
+</div>
+
+<div id="app">
+
+  <header>
+    <img id="club-logo" class="logo"
+      src="https://drive.google.com/thumbnail?id=10vGf5g25Sg1DvzMLQar-_G_N9uInch7J&sz=w128"
+      alt="Trinitarios"
+      onerror="this.style.display='none';document.getElementById('logo-fb').style.display='flex'">
+    <div id="logo-fb" class="logo-fallback" style="display:none">T</div>
+    <div class="header-title">
+      <h1>TRINITARIOS VÓLEY INFERIORES</h1>
+      <p>Dashboard de Rendimiento 2026</p>
+    </div>
+    <div class="header-right">
+      <span class="last-update" id="last-update">–</span>
+      <button class="btn btn-sm" onclick="loadData()">↻ Actualizar</button>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Agrupación</span>
+      <select id="filter-group-by" onchange="applyFiltersAndRender()">
+        <option value="player">Por Jugador (agregado)</option>
+        <option value="player-cat">Por Jugador × Categoría</option>
+        <option value="match">Por Partido</option>
+        <option value="category">Por Categoría</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Categoría</span>
+      <div class="cat-checkboxes" id="cat-checkboxes"></div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Fecha desde</span>
+      <input type="date" id="filter-date-from" onchange="applyFiltersAndRender()">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Fecha hasta</span>
+      <input type="date" id="filter-date-to" onchange="applyFiltersAndRender()">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Buscar jugador</span>
+      <input type="text" id="filter-search" placeholder="Nombre..." oninput="applyFiltersAndRender()">
+    </div>
+    <div class="filter-group" style="justify-content:flex-end">
+      <label class="toggle-label">
+        <input type="checkbox" id="filter-show-totals" onchange="applyFiltersAndRender()">
+        Mostrar totales equipo
+      </label>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="resumen">Resumen</button>
+    <button class="tab-btn" data-tab="partido">Partido x Partido</button>
+    <button class="tab-btn" data-tab="saque">Saque</button>
+    <button class="tab-btn" data-tab="recepcion">Recepción</button>
+    <button class="tab-btn" data-tab="ataque">Ataque</button>
+    <button class="tab-btn" data-tab="comparacion">Comparación</button>
+    <button class="tab-btn" data-tab="evolucion">Evolución</button>
+    <button class="tab-btn" data-tab="detalle">Detalle Jugador</button>
+  </nav>
+
+  <div class="content">
+
+    <div class="tab-panel active" id="tab-resumen">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--above-bg);border:1px solid var(--above)"></div> Por encima del promedio</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--below-bg);border:1px solid var(--below)"></div> Por debajo del promedio</div>
+      </div>
+      <div class="section-title">Tabla General</div>
+      <div class="table-wrap" id="resumen-table"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-partido">
+      <div class="compare-controls" style="background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+        <div style="width: 100%; margin-bottom: 16px;">
+          <span class="filter-label" style="display:block; margin-bottom: 8px;">1. Seleccionar Partidos (Click para elegir uno o varios)</span>
+          <div id="partido-match-row" class="match-selector-row"></div>
+        </div>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; width: 100%;">
+          <div class="filter-group">
+            <span class="filter-label">2. Filtrar por Categoría</span>
+            <select id="partido-cat-select" onchange="renderPartido()" style="font-size: 0.95rem; padding: 8px 12px; min-width: 150px; background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 6px;"></select>
+          </div>
+        </div>
+        <div id="partido-kpi-row" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; width: 100%;">
+             </div>
+      </div>
+      <div class="section-title">Rendimiento en los partidos seleccionados</div>
+      <div class="table-wrap" id="partido-table"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-saque">
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3>Aces (puntos de saque) por jugador</h3>
+          <div class="ref-control" id="ref-serve-ace"></div>
+          <div class="chart-wrap"><canvas id="chart-serve-ace"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Eficiencia de saque % por jugador</h3>
+          <div class="ref-control" id="ref-serve-eff"></div>
+          <div class="chart-wrap"><canvas id="chart-serve-eff"></canvas></div>
+        </div>
+      </div>
+      <div class="section-title">Detalle de Saque</div>
+      <div class="table-wrap" id="saque-table"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-recepcion">
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3>Eficacia de recepción % (R#+ / RTOT)</h3>
+          <div class="ref-control" id="ref-rec-eficacia"></div>
+          <div class="chart-wrap"><canvas id="chart-rec-eficacia"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Eficiencia de recepción % ((R#+ – R/ – R=) / RTOT)</h3>
+          <div class="ref-control" id="ref-rec-eficiencia"></div>
+          <div class="chart-wrap"><canvas id="chart-rec-eficiencia"></canvas></div>
+        </div>
+      </div>
+      <div class="section-title">Detalle de Recepción</div>
+      <div class="table-wrap" id="recepcion-table"></div>
+      <div class="sub-section" id="sub-rataque">
+        <div class="sub-section-title" onclick="toggleSub('sub-rataque')">Ataque de rotación según calidad de recepción</div>
+        <div class="sub-section-body">
+          <div class="table-wrap" id="r-detail-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-ataque">
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3>Eficiencia ataque rotación % (r GENERAL)</h3>
+          <div class="ref-control" id="ref-atq-rot"></div>
+          <div class="chart-wrap"><canvas id="chart-atq-rot"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Eficiencia contraataque % (d GENERAL)</h3>
+          <div class="ref-control" id="ref-atq-contra"></div>
+          <div class="chart-wrap"><canvas id="chart-atq-contra"></canvas></div>
+        </div>
+      </div>
+      <div class="section-title">Ataque de Rotación (r)</div>
+      <div class="table-wrap" id="ataque-rot-table"></div>
+      <div class="sub-section open" id="sub-dcontra">
+        <div class="sub-section-title" onclick="toggleSub('sub-dcontra')">Contraataque (d) – General, Primeros Tiempos, Tendida, Alta</div>
+        <div class="sub-section-body">
+          <div class="table-wrap" id="ataque-contra-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-comparacion">
+      <div class="compare-controls" style="background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; width: 100%;">
+          <div class="filter-group">
+            <span class="filter-label">Métrica:</span>
+            <select id="compare-metric">
+              </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Mínimo de Intentos: <span id="compare-min-val" style="color:var(--accent); font-weight:bold; font-size:1rem;">0</span></span>
+            <input type="range" id="compare-min-attempts" min="0" max="100" value="0" style="width: 200px; accent-color: var(--accent);" oninput="document.getElementById('compare-min-val').textContent=this.value; renderComparacion()">
+          </div>
+          <label class="toggle-label" style="margin-left: auto;">
+            <input type="checkbox" id="compare-show-teams"> Incluir equipos
+          </label>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3 id="compare-title">Comparación por jugador</h3>
+        <div class="ref-control" id="ref-compare"></div>
+        <div class="chart-wrap tall"><canvas id="chart-compare"></canvas></div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--above)"></div> Por encima del promedio</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--below)"></div> Por debajo del promedio</div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-evolucion">
+      <div class="evol-controls">
+        <div class="filter-group">
+          <span class="filter-label">1. Seleccionar Jugador / Equipo</span>
+          <select id="evol-player-select" onchange="onEvolPlayerChange()" style="font-size: 0.95rem; padding: 8px 12px; min-width: 250px; background: var(--bg2); color: var(--text); border: 1px solid var(--accent); border-radius: 6px;"></select>
+        </div>
+        <div class="filter-group" style="flex:2;min-width:240px">
+          <span class="filter-label">2. Métricas a graficar (Selecciona varias)</span>
+          <div class="player-check-list" id="evol-metric-checks"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Evolución partido a partido</h3>
+        <div class="chart-wrap tall"><canvas id="chart-evolucion"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-detalle">
+      <div class="player-select-wrap">
+        <span class="filter-label">Jugador:</span>
+        <select id="detail-player-select" onchange="renderDetalle()"></select>
+      </div>
+      <div id="detalle-content"></div>
+    </div>
+
+  </div></div><script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/data.js"></script>
+<script src="js/metrics.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/tabs.js"></script>
+<script src="js/evolucion.js"></script>
+<script>
+  document.getElementById('compare-metric').innerHTML = METRIC_OPTIONS.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+</script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
