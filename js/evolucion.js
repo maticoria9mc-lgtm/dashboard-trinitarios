@@ -115,21 +115,41 @@ function buildEvolChart(matches) {
   });
 }
 
+// --- HELPER FUNCTIONS MODIFICADAS ---
+
+// Transforma fechas (DD/MM/YYYY) para que se puedan ordenar de forma segura
+function getSortableDateEvol(dStr) {
+  if(!dStr) return '00000000';
+  const parts = dStr.split(/[-/]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) return `${parts[0]}${parts[1].padStart(2,'0')}${parts[2].padStart(2,'0')}`;
+    if (parts[2].length === 4) return `${parts[2]}${parts[1].padStart(2,'0')}${parts[0].padStart(2,'0')}`;
+  }
+  return dStr;
+}
+
+// Filtra los partidos y los ORDENA DE MÁS VIEJO A MÁS NUEVO
 function getMatchListFromData(data) {
   const seen = new Set(); const list = [];
   for (const r of data) {
     const k = `${r.FECHA_RAW}||${r.RIVAL||''}`;
     if (!seen.has(k)) { seen.add(k); list.push({ fecha: r.FECHA_RAW, rival: r.RIVAL||'', key: k }); }
   }
-  return list.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  // Se ordena de MAS VIEJO a MAS NUEVO (cronológico normal)
+  return list.sort((a, b) => getSortableDateEvol(a.fecha).localeCompare(getSortableDateEvol(b.fecha)));
 }
 
+// Extrae el día y mes para los labels sin usar "new Date()" para evitar el "NaN"
 function formatDateShort(dateStr) {
   if (!dateStr) return '?';
-  try {
-    const d = new Date(dateStr);
-    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-  } catch { return dateStr; }
+  const parts = dateStr.split(/[-/]/);
+  if (parts.length === 3) {
+    // Si es YYYY-MM-DD
+    if (parts[0].length === 4) return `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}`;
+    // Si es DD/MM/YYYY
+    return `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}`;
+  }
+  return dateStr;
 }
 
 function escHtml(str) {

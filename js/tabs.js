@@ -485,3 +485,66 @@ function renderDetalle() {
 
   makeRadarChart('chart-radar-player', radarDefs.map(d => d.label), pN, aN, chosen);
 }
+// ─── ASISTENCIA / CITACIONES ─────────────────────────────────────────────────
+function renderAsistencia() {
+  const f = getFilters();
+  
+  // Filtramos la base de datos respetando las fechas y categorías, 
+  // pero ignorando el filtro de "1 partido" para poder ver el historial completo
+  const baseData = filterData({ ...f, selectedMatches: null, showTotals: false });
+
+  // Reutilizamos la función de evolucion.js que ordena los partidos cronológicamente
+  const matches = getMatchListFromData(baseData);
+
+  // Extraemos jugadores únicos y agrupamos sus categorías
+  const playerMap = {};
+  baseData.forEach(r => {
+    if (!playerMap[r.JUGADOR]) playerMap[r.JUGADOR] = new Set();
+    if (r.CATEGORIA) playerMap[r.JUGADOR].add(r.CATEGORIA);
+  });
+  
+  const players = Object.keys(playerMap).sort();
+
+  if (!players.length || !matches.length) {
+    document.getElementById('asistencia-table').innerHTML = '<div class="no-data">No hay datos de asistencia para mostrar con los filtros actuales.</div>';
+    return;
+  }
+
+  // Armamos el encabezado de la tabla (Jugador, Citaciones y 1 columna por cada partido)
+  let html = `<table><thead><tr>
+    <th style="min-width: 140px;">Jugador</th>
+    <th>Cat.</th>
+    <th title="Total de partidos convocados" style="color: var(--accent);">Citaciones</th>
+    ${matches.map(m => `<th title="${m.rival} (${m.fecha})" style="text-align:center; min-width:60px;">
+      <div style="font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; margin: 0 auto; color: var(--muted);">${m.rival || 'Rival'}</div>
+      <div style="font-size:0.75rem; color:var(--text); margin-top:2px;">${formatDateShort(m.fecha)}</div>
+    </th>`).join('')}
+  </tr></thead><tbody>`;
+
+  // Evaluamos partido a partido si el jugador estuvo presente
+  for (const p of players) {
+    let count = 0;
+    let rowCells = '';
+    
+    for (const m of matches) {
+      // Verificamos si existe alguna fila (aunque sea con 0 stats) para este jugador en este partido
+      const wasCalled = baseData.some(r => r.JUGADOR === p && r.FECHA_RAW === m.fecha && (r.RIVAL || '') === m.rival);
+      if (wasCalled) count++;
+      
+      rowCells += `<td>${wasCalled ? '<span style="color:var(--above); font-size:1.1rem; font-weight:bold;">✔</span>' : '<span style="color:var(--muted); opacity:0.15; font-size:1.1rem;">-</span>'}</td>`;
+    }
+    
+    const cats = [...playerMap[p]].sort();
+    html += `<tr>
+      <td><strong>${p}</strong></td>
+      <td>${catTags(cats)}</td>
+      <td style="font-weight:900; color:var(--accent); font-size: 1.15em; background: rgba(255,193,7,0.05);">${count}</td>
+      ${rowCells}
+    </tr>`;
+  }
+  
+  html += '</tbody></table>';
+
+  document.getElementById('asistencia-table').innerHTML = html;
+  makeSortable(document.querySelector('#asistencia-table table'));
+}

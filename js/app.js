@@ -8,13 +8,14 @@ function applyFiltersAndRender() {
 function renderActiveTab() {
   const active = document.querySelector('.tab-btn.active')?.dataset.tab || 'resumen';
   if      (active === 'resumen')     renderResumen();
-  else if (active === 'partido')     renderPartido(); // <-- Esta es la línea que faltaba
+  else if (active === 'partido')     renderPartido();
   else if (active === 'saque')       renderSaque();
   else if (active === 'recepcion')   renderRecepcion();
   else if (active === 'ataque')      renderAtaque();
   else if (active === 'comparacion') renderComparacion();
-  else if (active === 'detalle')     renderDetalle();
   else if (active === 'evolucion')   renderEvolucion();
+  else if (active === 'detalle')     renderDetalle();
+  else if (active === 'asistencia')  renderAsistencia();
 }
 
 // ─── Tab switching ─────────────────────────────────────────────────────────────
